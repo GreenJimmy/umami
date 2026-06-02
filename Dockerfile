@@ -58,11 +58,10 @@ COPY --from=builder /app/generated ./generated
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# pnpm v11 runs an implicit "deps status check" (an install) before every
-# `pnpm <script>`. At runtime the container is non-root and /app is root-owned,
-# so that check fails with EACCES writing a temp file. The runtime image must
-# never install, so disable the pre-run deps check for all pnpm invocations.
-RUN echo "verify-deps-before-run=false" > /app/.npmrc
+# The standalone bundle ships its own minimal package.json. Overlay the repo's
+# package.json so the ESM startup scripts (scripts/*.js use `import`) resolve as
+# modules via "type": "module". Nothing reads its dependency list at runtime.
+COPY --from=builder /app/package.json ./package.json
 
 USER nextjs
 
@@ -70,5 +69,13 @@ EXPOSE 3000
 
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+# Put node_modules/.bin on PATH so check-db.js can resolve the `prisma` binary
+# (execSync('prisma migrate deploy')) without going through a package manager.
+ENV PATH="/app/node_modules/.bin:$PATH"
 
-CMD ["pnpm", "start-docker"]
+# Run the startup steps directly with node instead of `pnpm start-docker`.
+# pnpm v11 runs an implicit "deps status check" (an install) before every
+# `pnpm <script>`; at runtime the container is non-root and /app is root-owned,
+# so that check crash-loops with EACCES. start-docker is just these three node
+# steps, so invoke them directly and avoid pnpm at runtime entirely.
+CMD ["sh", "-c", "node scripts/check-db.js && node scripts/update-tracker.js && node server.js"]
