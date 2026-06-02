@@ -6,7 +6,7 @@ FROM node:${NODE_IMAGE_VERSION} AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN npm install -g pnpm
+RUN corepack enable && corepack prepare pnpm@11.5.0 --activate
 RUN pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
@@ -39,7 +39,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 RUN set -x \
     && apk add --no-cache curl \
-    && npm install -g pnpm
+    && corepack enable && corepack prepare pnpm@11.5.0 --activate
 
 # Script dependencies
 RUN pnpm --allow-build='@prisma/engines' --allow-build='prisma' add npm-run-all dotenv chalk semver \
