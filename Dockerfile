@@ -58,6 +58,12 @@ COPY --from=builder /app/generated ./generated
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# pnpm v11 runs an implicit "deps status check" (an install) before every
+# `pnpm <script>`. At runtime the container is non-root and /app is root-owned,
+# so that check fails with EACCES writing a temp file. The runtime image must
+# never install, so disable the pre-run deps check for all pnpm invocations.
+RUN echo "verify-deps-before-run=false" > /app/.npmrc
+
 USER nextjs
 
 EXPOSE 3000
