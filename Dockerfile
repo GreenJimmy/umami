@@ -28,7 +28,7 @@ RUN npm run build-docker
 FROM node:${NODE_IMAGE_VERSION} AS runner
 WORKDIR /app
 
-ARG PRISMA_VERSION="7.3.0"
+ARG PRISMA_VERSION="7.8.0"
 ARG NODE_OPTIONS
 
 ENV NODE_ENV=production
